@@ -12,25 +12,13 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 
 public class UserDaoJDBCImpl implements UserDao {
-    private Connection connection;
-    private Statement statement;
-    private final Util util;
-    public UserDaoJDBCImpl() {
-        util = new Util();
+    private final Connection connection = Util.getConnection();
 
-        try {
-            util.initConnection();
-            connection = util.getConnection();
-            statement = connection.createStatement();
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
-            System.exit(1);
-        }
-    }
+    public UserDaoJDBCImpl() {}
 
+    @Override
     public void createUsersTable() {
-        try {
-            String sqlQuery = """
+        String sqlQuery = """
                     CREATE TABLE Users (
                         id INT AUTO_INCREMENT PRIMARY KEY,
                         name VARCHAR(50) NOT NULL,
@@ -38,59 +26,89 @@ public class UserDaoJDBCImpl implements UserDao {
                         age TINYINT NOT NULL
                     );""";
 
+        try (Statement statement = connection.createStatement()) {
             statement.execute(sqlQuery);
-
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
+    @Override
     public void dropUsersTable() {
-        try {
-            String sqlQuery = "DROP TABLE Users;";
+        String sqlQuery = "DROP TABLE Users;";
+
+        try (Statement statement = connection.createStatement()) {
             statement.execute(sqlQuery);
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
     }
 
+    @Override
     public void saveUser(String name, String lastName, byte age) {
         String sqlQuery = "INSERT INTO Users (name, lastName, age) VALUES (?, ?, ?)";
 
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery)) {
+            connection.setAutoCommit(false);
             preparedStatement.setString(1, name);
             preparedStatement.setString(2, lastName);
             preparedStatement.setByte(3, age);
-            preparedStatement.execute();
+            preparedStatement.executeUpdate();
+            connection.commit();
+
             System.out.println("User с именем - " + name + " добавлен в базу данных");
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+        } catch (SQLException e1) {
+            System.out.println(e1.getMessage());
+
+            try {
+                connection.rollback();
+            } catch (SQLException e2) {
+                System.out.println(e2.getMessage());
+            }
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e3) {
+                System.out.println(e3.getMessage());
+            }
         }
     }
 
+    @Override
     public void removeUserById(long id) {
         String sqlQuery = """
                 DELETE FROM Users WHERE id = ?;
-                """;
+        """;
 
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sqlQuery)) {
+            connection.setAutoCommit(false);
             preparedStatement.setLong(1, id);
-            preparedStatement.execute();
-
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+            preparedStatement.executeUpdate();
+            connection.commit();
+        } catch (SQLException e1) {
+            System.out.println(e1.getMessage());
+            try {
+                connection.rollback();
+            } catch (SQLException e2) {
+                System.out.println(e2.getMessage());
+            }
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e3) {
+                System.out.println(e3.getMessage());
+            }
         }
     }
 
+    @Override
     public List<User> getAllUsers() {
         String sqlQuery = """
                     SELECT * FROM Users;     \s
-                    """;
+        """;
         List<User> list = new ArrayList<>();
 
-        try {
+        try (Statement statement = connection.createStatement()) {
             ResultSet resultSet = statement.executeQuery(sqlQuery);
 
             while (resultSet.next()) {
@@ -101,7 +119,6 @@ public class UserDaoJDBCImpl implements UserDao {
                         )
                 );
             }
-
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
@@ -109,16 +126,31 @@ public class UserDaoJDBCImpl implements UserDao {
         return list;
     }
 
+    @Override
     public void cleanUsersTable() {
         String sqlQuery = """
                 DELETE FROM Users;
-                """;
+        """;
 
-        try {
+        try (Statement statement = connection.createStatement()) {
+            connection.setAutoCommit(false);
             statement.execute(sqlQuery);
+            connection.commit();
 
-        } catch (SQLException e) {
-            System.out.println(e.getMessage());
+        } catch (SQLException e1) {
+            System.out.println(e1.getMessage());
+
+            try {
+                connection.rollback();
+            } catch (SQLException e2) {
+                System.out.println(e2.getMessage());
+            }
+        } finally {
+            try {
+                connection.setAutoCommit(true);
+            } catch (SQLException e3) {
+                System.out.println(e3.getMessage());
+            }
         }
     }
 }
