@@ -134,7 +134,7 @@ public class UserDaoJDBCImpl implements UserDao {
 
         try (Statement statement = connection.createStatement()) {
             connection.setAutoCommit(false);
-            statement.execute(sqlQuery);
+            statement.executeUpdate(sqlQuery);
             connection.commit();
 
         } catch (SQLException e1) {
